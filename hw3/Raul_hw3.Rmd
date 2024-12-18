@@ -1,0 +1,239 @@
+---
+title: "Homework 3"
+author: "Raul Torres Aragon"
+date: "2023-02-11"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+load("hw3_objects.RData")
+```
+
+## Problem 1  
+
+Consider the six city data on the class website. The data file is `sixcity.dat` and the 
+variable names are given in `sixcity.docx`. This data set contains 537 children from 
+Steubenville, Ohio, each of whom was examined annually from age 7 to age 10 for the presence 
+of wheezing (`ws`)--which suggests a diagnosis of asthma. Mother's smoking (`smokes`) 
+status was reported. Consider fitting marginal logistic models with covariates age, 
+smoking and interaction between age and smoking.  
+
+### (1)  
+Fit a regular logistic regression ignoring within-subject correlation and calculate the naive SEs.  
+
+Ignoring the within-id correlation, we run the following logistic model:  
+$$
+\log\bigg(\frac{P(\text{ws}=1)}{P(\text{ws = 0})}\bigg) = age +smokes +age\times smokes
+$$
+
+### (2)  
+Analyze this data set using GEE1 assuming working independence and exchangeable. Compare the results with the naive logistic regression. Interpret each regression coefficient, except for the intercept.  
+
+```{r, echo=FALSE}
+knitr::kable(tab1, digits = c(2,3,3,5,5), 
+             caption = "Comparison of standard errors across models")
+```  
+
+As we can see, ignoring the correlation (i.e. running simple GLM) results in (practically) the naive standard errors. Furthermore, given the fact that the independence and the exchangeable standard errors are the same (the the fifth decimal) suggests that the correlation within each id is not too high.  
+
+We now exponentiate the coefficients for ease of interpretation.  
+
+```{r, echo=FALSE}
+tab2_this_rmd <- tab1 |> dplyr::mutate(OddsRatios = exp(Estimate)) |> dplyr::select(Estimate, OddsRatios)
+knitr::kable(tab2_this_rmd, digits = 2, 
+             caption = "Odds of wheezing among children")
+```  
+
+Getting one year older is associated with a 6.8% ($exp\{ -.14+.07\}$) reduction in the odds of experiencing wheezing overall. Living with a mother who smokes, is associated with a 46% ($exp\{.31+.07\}$) increase in the odds of wheezing overall. 
+
+
+### (3) (BONUS)  
+Analyze this data set using alternating logistic regression. Is there a strong within-subject correlation?
+
+### (4)  
+Propose a GEE1 model that can separate the baseline age effect from the longitudinal time effect.
+
+We proposed creating a binary indicator for age at baseline (i.e. `age=0`) and adding it 
+to a GEE model as a covariate. We keep the rest intact.  
+
+$$
+ \text{mean(logit\{ws}_{i}\}) = \beta_0 + \beta_1 \text{age}_{base} + 
+                            \beta_2 \text{age} + \beta_3 \text{smokes} + 
+                            \beta_4 \text{age} \times \text{smokes}
+$$
+
+```{r, echo=FALSE}
+knitr::kable(coef4[,c(1,6,4)], digits = c(2,2,3),
+             caption = "Estimating the effect of the passage of time")
+```  
+
+We see that the effect of time at baseline is associated with an overall reduction of 70% in the odds of wheezing as opposed to on subsequent times.  
+
+
+
+## Problem 2  
+
+Conduct a literature search and find your favorite algorithm to simulate correlated binary outcomes which have exchangeable correlation $\rho = 0.25$ and marginal means follow  
+
+$$
+logit(\mu_{ij}) = \beta_0 + \beta_1 X_{1i} + \beta_2X_{2ij},
+$$
+where i indicates subject $i = 1,\dots,m = 300$ and j indicates time point $j = 1,2,3$, 
+$\beta_0 = -1.5$, $\beta_1 = 0.5$, $\beta_2 = 0.5$, $X_{1i} = 0/1$ is gender with half 
+being males, and $X_{2ij} = j - 1$ indicates time.  
+
+###  (1)  
+Simulate 200 data sets and run GEE1 with exchangeable correlation to estimate the 
+regression coefficients and their sandwich SEs, and the correlation parameter $\rho$.  
+
+For this simulation, we first created an id indicator for the 300 subjects. We then  
+created a time variable ($X_1$) enumerating the time period (1 thru 3) per subject. Then we randomly selected subjects to be one of the two binary gender values so that 50% are 1 and the other 50% are 0 (This is $X_2$.) Then we generated correlated binary outcomes using the R function `SimCorMultRes::rbin`, an exchangeable correlation matrix and the above $\beta$ 
+coefficient values and $X_1$ and $X_2$.  
+
+###  (2)  
+Calculate the average regression coefficient estimates and the average correlation parameters across the 200 runs, and compare them with the true values, i.e., evaluate the empirical biases of the GEE parameter estimates.  
+
+```{r, echo=FALSE}
+knitr::kable(bias_tab, 
+             digits = c(3,3,3),
+             caption = "Bias of parameters under GEE estimation")
+```
+
+As shown in table 4, the estimates are unbiased except for $\rho$. 
+
+###  (3)  
+Calculate the average sandwich SEs, i.e, average "estimated SEs", and compare them with the 
+"empirical SEs", which are the standard deviations of the estimate regression coefficients 
+across the 200 simulations. This allows you to evaluate whether the estimated SEs using the sandwich estimators work well in estimating the true variation of the GEE estimates 
+$\hat{\beta}$'s.  
+  
+```{r, echo=FALSE}
+knitr::kable(SE_tab, 
+             digits = 3,
+             caption = "Standard Errors under GEE estimation")
+```  
+
+As table 5 shows, sandwich estimators are very close to the empirical standard errors. This illuastrates that the GEE estimates are indeed robust.  
+
+###  (4)  
+Does your program allow you to simulate correlated binary data with correlation 0.75?  
+
+Yes it does, though I'm aware of the warnings that sometimes that may not pan out.  
+
+```{r, echo=FALSE}
+knitr::kable(bias_tab_24, 
+             digits = c(3,3,3),
+             caption = "Bias of parameters under GEE estimation (rho=0.75)")
+```
+
+
+
+## Problem 3  
+
+GEEs vs. LMMs  
+
+###  (1)
+
+Re-analyze the Framingham data from homework 2 using a GEE. Compare the results
+between using an LMM and a GEE.  
+
+```{r, echo=FALSE}
+knitr::kable(tab_31, digits = c(2,2,2),
+             caption = "Odds Ratios under GEE and LMM")
+```  
+  
+As the table shows, the results are very similar. The one difference is in the `female` estimate, perhaps because GEEs are population-means and GLM is a conditional mean. Other than that they are very similar.  
+
+The following figure illustrates the information in the table.  
+
+```{r, echo=FALSE, out.width="65%", fig.align='center'}
+  par(mar=c(8,8,1,1)) 
+  plot(exp(fit_gee_coeffs[2:8,1]), y=1:7, pch=1, col="darkblue", yaxt="n", ylab="", xlab="odds ratio") 
+  points(x=coeffs_hw2[3:9,1]       , y=1:7, pch=4, col="darkred")
+  points(exp(fit_gee_coeffs_ind[2:8,1]), y=1:7, pch=5, col="darkgreen") 
+  axis(side=2, 
+       at=1:7, 
+       labels = c("t (re_t)", "age", "female", "bmi_baseline", "bmi_10wks", "chol_baseline", "age:female"),
+       las=1
+  )
+  abline(v=1, col="black")
+  grid(nx = NA, ny = NULL,
+       lty = 2,      # Grid line type
+       col = "gray", # Grid line color
+       lwd = 2)  
+  legend("topleft", legend=c("LME+logistic", "GEE (ex)", "GEE (in)"),
+         col=c("darkblue", "darkred","darkgreen"), pch=c(1,4,5), cex=0.8)
+  par(mar=c(1,1,1,1)) 
+```  
+As we can see, the estimates are very close, except for the estimate for female. The reason is perhaps because GEEs are population means, and GLM is a conditional-mean estimate. (Conditional on gender = 2.)  
+
+
+###  (2)  
+(Open Ended Problem) An investigator is interested in conducting a study in which one of two treatments will be administered to an even number of $m$ individuals ($m$/2 in each treatment group). Subsequently, the investigator plans to measure a quantitative (continuous) biomarker on each individual $n$ times longitudinally.  
+The investigator considers different strategies for analyzing the data:  
+- (1) by using a linear mixed model (LMM)  
+- (2) using a GEE  
+- (3) using OLS with a fixed effect for each participant.  
+What are the relative merits and/or limitations of these approaches? Conduct a simulation 
+study to assess these approaches.  
+
+```{r, echo=FALSE}
+knitr::kable(res_p32[, c(1,2,3,9:14)], digits = 2,
+             caption = "Bias and coverage comparison across\nthree models with b0=1.79, b1=-0.8 on correalted outcomes")
+```
+
+Using a linear mixed model implies that there are some correlation among the measurements--which would be weird if there wasn't. This would be controlled by using a random intercept per individual. Interpretation of the coefficients is straightforward. The model is not computationally intense, even with a large number of individuals or measurements. The one disadvantage of LMM is if the researchers want to make predictions with new participants. That is because the coefficients of the random effects of the participants wouldn't work as estimates for the random effects of new (and hence different) participants.  
+
+GMM is another good alternative. Because the model is linear, the interpretation of the coefficients is the same as the LMM. Standard errors will be very similar as well. The one disadvantage of LMM is that we wouldn't get an estimate for the correlation--if that later becomes of interest to the researchers--as we would with an LMM.  
+
+OLS with fixed effects for each participants also behaves well in the simulations. Results are very similar to LMM and GEE and coverage is spot on with high and low correlation. This is because we are, technically, controlling for the time-invariant idiosyncrasies of the participants. 
+
+All three suffer from not being very good at prediction if that later becomes of interest.  
+
+
+If you were given more time, what additional simulation scenarios would you consider?  
+
+I would like to see how these model differ if the correlation structure varied with time. In other words, what if the idiosyncratic effect of each participant--whatever it is per cluster--varied with time. In that case, LMM could add random slope and GEE could use an AR(1) correlation structure, but I'm not sure how the OLS with fixed effects would do at estimating the effect of the treatment drug.  
+
+I'd also like to see this done with a binary or discrete outcome--using GLMM and GEE and logistic with fixed effects.  
+
+
+
+
+# Problem 4  
+
+Multiple discrete and continuous endpoints are common in many biomedical studies. For example, in toxicology, fetal weight (continuous) and fetal death (binary) are observed. One is interested in studying the effects of dose levels on fetal weight and fetal death and jointly modeling these two outcomes, which may be correlated. Denote by $Y_{1i}$ a continuous response (e.g., fetal weight) and by $Y_{2i}$ a binary response (e.g., fetal death). Let $X_i$ be a vector covariates, e.g., dosage. Note that $Y_{1i}$ and $Y_{2i}$ might be correlated.  
+Propose a marginal/population-average model to jointly model ($Y_{1i}$, $Y_{2i}$) by modeling their means as functions of $X_i$. Write down the model. Propose estimating equations for estimating regression coefficients. Propose covariance estimators of the estimated regression coefficients. You need not implement/run this.  
+
+Multivariate outcomes can be hard to grasp because the outcome is usually thought of (and modeled) as univariate. However, Ross L. Prentice and Lue Ping Zhao in their 1991 Biometrics paper showed that multivariate (as mixture of continuous and binary outcomes) can be modeled with GEE2 when the two outcomes are correlated. (https://www.jstor.org/stable/2532642).  
+In their paper they show that the GEE estimates are asymptotically unbiased.  
+
+They propose a model that would work in for this example:  
+
+$$
+\begin{aligned}
+\mu_{k1} &= \boldsymbol{x}^T_k\boldsymbol{\beta}_1 \\
+\mu_{k2} &= \exp(\boldsymbol{x}^T \boldsymbol{\beta}_2)[1+\exp(\boldsymbol{x}^T \boldsymbol{\beta}_2)]^{-1} \\
+\sigma_{k11}&=\exp(\boldsymbol{x}^T\alpha_{11}) \\
+\sigma_{k12}&=(\boldsymbol{x}^T\alpha_{11})(\sigma_{k11}\sigma_{k22})^{1/2}
+\end{aligned}
+$$  
+where $\mu_{k1}$ is the mean of fetal weight (continuous). $\mu_{k2}$ is mean fetal death (binary), and $\boldsymbol{x}$ is a set of covariates, including dose levels. $\beta_1$ is the set of covariate coefficients in the continous outcome, and $\beta_2$ is the set of coefficients for the *same* covariates but when in the binary model.  
+
+$\sigma_{k11}$ is the variance of fetal weight, and $\sigma_{k12}$ is the correlation of fetal weight and fetal death.  
+
+The set of estimating equations are modeling not just the mean and variance, but the covariance $\sigma_{k12}$. 
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,769 @@
+---
+title: "Homework 2"
+author: "Raul Torres Aragon"
+date: "2023-01-24"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+load("hw2_objects.RData")
+```
+
+## Problem 1  
+
+## (1.1)  
+Consider the linear mixed model  
+$$
+Y = X\beta + Zb + \epsilon
+$$  
+
+where $Y$ is an $n\times1$ vector of outcomes from $m$ clusters (but note that $m$ does not play a role in this problem since we are in the stacked matrix form), $X$ and $Z$ are $n\times p$ and $n \times q$ design matrices associated with the fixed effects and the random effects respectively, $\beta$ is a $p \times 1$ vector of fixed effects, $\boldsymbol{b}$ is a $q \times 1$ vector of random effects following $b \sim N(0, D(\theta))$, and the residuals $\epsilon \sim N(0,R(\theta))$. Denote $V=cov(Y)=ZDZ^T+R$.  
+(1) Given $(\beta, \theta)$, show the BLUP estimator $\hat{\boldsymbol{b}}_{BLUP}$ = $DZ^TV-1(Y-X\beta)$ is the empirical Bayes estimator $\hat{\boldsymbol{b}} = E(\boldsymbol{b}|Y)$.  
+
+The empirical Bayes estimator is the expectation of $p(\boldsymbol{b}|\boldsymbol{y})$ where:  
+$$
+\begin{aligned}
+p(\boldsymbol{b}|\boldsymbol{y}) &\propto p(\boldsymbol{y}|\boldsymbol{b}) \times p(\boldsymbol{b})\\ 
+&\propto N(X \boldsymbol{\beta}+ Z \boldsymbol{b},R) \times N(0,D) \\
+&\propto \frac{1}{(2\pi)^n \det(R)}\exp\bigg\{ \frac{1}{2}(\boldsymbol{y}-X\boldsymbol{\beta}-Z\boldsymbol{b})^TR^{-1} (\boldsymbol{y}-X\boldsymbol{\beta}-Z\boldsymbol{b}) \bigg\} \times 
+\frac{1}{(2\pi)^n \det(D)}\exp\bigg\{ \frac{1}{2}(\boldsymbol{b}-0)^TD^{-1} (\boldsymbol{b}-0) \bigg\} \\
+&\propto K \exp\bigg\{ \frac{1}{2}\bigg[
+(\boldsymbol{y}-X\boldsymbol{\beta}-Z\boldsymbol{b})^TR^{-1} (\boldsymbol{y}-X\boldsymbol{\beta}-Z\boldsymbol{b}) + 
+\boldsymbol{b}^TD^{-1} \boldsymbol{b} \bigg]\bigg\} 
+\end{aligned}
+$$  
+For ease of notation, define $\boldsymbol{w} = \boldsymbol{y} - X\boldsymbol{\beta}$. Then  
+$$
+\begin{aligned}
+&\propto K \exp\bigg\{ \frac{1}{2}\bigg[
+(\boldsymbol{w}-Z\boldsymbol{b})^TR^{-1} (\boldsymbol{w}-Z\boldsymbol{b}) + 
+\boldsymbol{b}^TD^{-1} \boldsymbol{b} \bigg]\bigg\} \\
+&\propto K \exp\bigg\{ \frac{1}{2}\bigg[\boldsymbol{w}R^T\boldsymbol{w}-(Z\boldsymbol{b})^TR^{-1}\boldsymbol{w}-\boldsymbol{w}^TR^{-1}(Z\boldsymbol{b})+(Z\boldsymbol{b})^TR^{-1}(Z\boldsymbol{b})+\boldsymbol{b}^TD^{-1}\boldsymbol{b}\bigg]\bigg\}
+\end{aligned}
+$$  
+
+From here we can take out of the exponent terms that do not involve $\boldsymbol{b}$ and combine remaining terms:  
+
+$$
+\begin{aligned}
+&\propto K \exp\bigg\{ \frac{1}{2}\bigg[
+\underbrace{\boldsymbol{w}R^T\boldsymbol{w}}_{\text{ship out}}-
+\underbrace{(Z\boldsymbol{b})^TR^{-1}\boldsymbol{w}-\boldsymbol{w}^TR^{-1}(Z\boldsymbol{b})}_{\text{quadratic form with symmetric matrix is unqiue}}+
+\underbrace{(Z\boldsymbol{b})^T}_{\text{distribute transponse}} R^{-1}(Z\boldsymbol{b})+\boldsymbol{b}^TD^{-1}\boldsymbol{b}
+\bigg]\bigg\} \\ 
+&\propto K_2 \exp\bigg\{ \frac{1}{2}\bigg[
+\underbrace{-(Z\boldsymbol{b})^TR^{-1}\boldsymbol{w}-\boldsymbol{w}^TR^{-1}(Z\boldsymbol{b})}_{\text{combine}}+
+\underbrace{\boldsymbol{b}^TZ^TR^{-1}Z\boldsymbol{b}+\boldsymbol{b}^TD^{-1}\boldsymbol{b}}_{\text{combine}}
+\bigg]\bigg\} \\
+&\propto K_2 \exp\bigg\{ \frac{1}{2}\bigg[
+-2\boldsymbol{b}^TZ^TR^{-1}\boldsymbol{w}+
+\boldsymbol{b}^T(Z^TR^{-1}Z+D^{-1})\boldsymbol{b}
+\bigg]\bigg\}
+\end{aligned}
+$$  
+Define $M=Z^TR^{-1}Z+D^{-1}$ and $\boldsymbol{a} = Z^TR^{-1}\boldsymbol{w}$. Then one can see 
+that this looks almost like a perfect square.  
+$$
+\begin{aligned}
+&\propto K_2 \exp\bigg\{ \frac{1}{2}\bigg[ \boldsymbol{b}^TM\boldsymbol{b} - 2\boldsymbol{a}
+\bigg]\bigg\}
+\end{aligned}
+$$  
+
+To create a perfect square we insert an identity matrix in the form of $MM^{-1}$ in the linear 
+term, and add and subtract $\boldsymbol{u}^TM\boldsymbol{u}$ where $\boldsymbol{u} := M^{-1}\boldsymbol{a}$. 
+Then,  
+$$
+\begin{aligned}
+&\propto K_2 \exp\bigg\{ \frac{1}{2}\bigg[ 
+\boldsymbol{b}^TM\boldsymbol{b} - 
+2MM^{-1}\boldsymbol{a} + \boldsymbol{u}^TM\boldsymbol{u} - \boldsymbol{u}^TM\boldsymbol{u}
+\bigg]\bigg\} \\
+&\propto K_2 \exp\bigg\{ \frac{1}{2}\bigg[ 
+\boldsymbol{b}^TM\boldsymbol{b} - 
+2M\boldsymbol{u} + \boldsymbol{u}^TM\boldsymbol{u} - \boldsymbol{u}^TM\boldsymbol{u}
+\bigg]\bigg\}
+\end{aligned}
+$$  
+Because $\boldsymbol{u}$ is not a function of $\boldsymbol{b}$ we can ship $\boldsymbol{u}^TM\boldsymbol{u}$ 
+out of the exponent and have it join the constant. Then we can complete the square as follows:  
+
+$$
+\begin{aligned}
+&\propto K_2 \exp\bigg\{ \frac{1}{2}\bigg[ 
+(\boldsymbol{b}-\boldsymbol{u})^TM^{-1}(\boldsymbol{b}-\boldsymbol{u})
+\bigg]\bigg\}
+\end{aligned}
+$$  
+
+where $M=Z^TR^{-1}Z+D^{-1}$ and 
+$\boldsymbol{u} = M^{-1}\boldsymbol{a} = (Z^TR^{-1}Z+D)^{-1}Z^TR^{-1}(\boldsymbol{y}-X\beta)$, which--
+per Lindley and Smith (1971) paper--can be factored into: $DZ^T(ZDZ^T+R)^{-1}(\boldsymbol{y}-X\beta)$. 
+
+Thus, $p(\boldsymbol{b}|\boldsymbol{y})$ is proportional to a Gaussian function 
+with expectation 
+$DZ^T(ZDZ^T+R^{-1})(\boldsymbol{Y}-X\boldsymbol{\beta})=DZ^TV^{-1}(\boldsymbol{Y}-X\boldsymbol{\beta})=\hat{\boldsymbol{b}}_{BLUP}$. Hence the empirical Bayes estimator is indeed $\hat{\boldsymbol{b}}_{BLUP}$.  
+
+
+
+
+
+## (1.2)  
+
+Consider the BLUP estimator of $\beta$ and $b$ under the linear mixed model (1), which jointly maximizes the joint likelihood, apart from a constant, 
+$$
+-\frac{1}{2}(Y -X\beta-Zb)^TR^{-1}(Y -X\beta-Zb)-\frac{1}{2}b^TD^{-1}b. 
+$$
+
+The BLUPs satisfy the normal equation  
+$$
+\begin{bmatrix}
+X^TR^{-1}X & X^TR^{-1}Z \\
+Z^TR^{-1}X & Z^TR^{-1}Z + D^{-1}
+\end{bmatrix} 
+\begin{bmatrix}
+\hat{\beta} \\
+\hat{b}
+\end{bmatrix} = 
+\begin{bmatrix}
+X^TR^{-1}Y \\
+Z^TR^{-1}Y
+\end{bmatrix}.
+$$
+
+Show the BLUP estimators ($\hat{\beta},\hat{b}$) solving (2) also satisfy:  
+$$
+\hat{\beta} = (X^TV^{-1}X)^{-1}X^TV^{-1}Y \\
+\hat{b} = DZ^TV^{-1}(Y-X\hat{\beta}),
+$$  
+
+where $V = cov(Y) = ZDZ^T+R$.  
+
+Carrying out the multiplication of matrix equation (2) yields:  
+$$
+\begin{aligned}
+X^TR^{-1}X\hat{\beta} &+ X^TR^{-1}Z\hat{b} &= X^TR^{-1}Y \\
+Z^TR^{-1}X\hat{\beta} &+ (Z^TR^{-1}Z+D^{-1})\hat{b} &= Z^TR^{-1}Y.
+\end{aligned}
+$$ 
+
+Now, define $W = R^{-1}-R^{-1}Z(Z^TR^{-1} + D^{-1})$, then the first row of equation (2) can be 
+reduced to $X^TW^{-1}X\beta=X^TW^{-1}Y$. Notice that if $W=V^{-1}$ then:  
+$$
+\hat{\beta} = (X^TW^{-1}X)^{-1}X^TV^{-1}XY.
+$$  
+
+I now show that $\hat{b} = DZ^TV^{-1}(Y-X\beta)$.  
+Solving for $\hat{b}$ yields:  
+
+$$
+\begin{aligned}
+\hat{b} &= (Z^TR^{-1}Z+D^{-1})^{-1}Z^TR^{-1}(Y-X\beta) \\
+&= (Z^TR^{-1}Z+D^{-1})^{-1}Z^TR^{-1}VV^{-1}(Y-X\beta) \\
+&= (Z^TR^{-1}Z+D^{-1})^{-1}Z^TR^{-1}(ZDZ^T+R)V^{-1}(Y-X\beta) \\
+&= (Z^TR^{-1}Z+D^{-1})^{-1}\underbrace{Z^TR^{-1}(ZDZ^T+R)V^{-1}}_{\text{distribute } Z^TR^{-1}}(Y-X\beta) \\
+&= (Z^TR^{-1}Z+D^{-1})^{-1}\underbrace{(Z^TR^{-1}ZDZ^T+Z^T)}_{\text{factor out }DZ^T}V^{-1}(Y-X\beta) \\
+&= \underbrace{(Z^TR^{-1}Z+D^{-1})^{-1}(Z^TR^{-1}Z+D^{-1})}_{=I}DZ^TV^{-1}(Y-X\beta) \\
+&= DZ^TV^{-1}(Y-X\beta) = \hat{b}.
+\end{aligned}
+$$  
+
+
+
+
+## (1.3)  
+
+Calculate the likelihood of Y as $L(\beta, \theta) = \int L(Y|b)L(b)db$. Show that apart from 
+a constant the log-likelihood satisfies:  
+$$
+l(\beta, \theta) = \frac{1}{2}\log(\det(V))-\frac{1}{2}(Y-X\beta)^TV^{-1}(Y-X\beta),
+$$  
+
+where $l(\beta,\theta) = \log[L(\beta,\theta)]$.  
+
+Recall that from problem 1 part 1, we found that 
+$L(y|b)p(b) \propto N(DZ^TV^{-1}(\boldsymbol{Y}-X\boldsymbol{\beta}))$. 
+Thus,  
+
+$$
+\begin{aligned} 
+L(\beta,\theta) &= \int L(\boldsymbol{Y}|\boldsymbol{b})\times L(\boldsymbol{b}) d\boldsymbol{b}\\
+&\propto \int N(X\beta + Zb, R) \times N(0,D) \\
+&\propto K \exp \bigg\{-\frac{1}{2}
+\bigg[ 
+\boldsymbol{b}-DZ^T(ZDZ^T+R^{-1})(Y-X\beta)]^T(Z^TD^{-1}Z+R^{-1})^{-1}[\boldsymbol{b}-DZ^T(ZDZ^T+R^{-1})(Y-X\beta)
+\bigg]
+\bigg\}
+\end{aligned}
+$$  
+When completing problem 1 part 1, we shipped out of the exponent terms not involving $b$ 
+and had them join the constant term. If we "resurrect" these constants back inside the 
+exponent, then we see that:  
+$$
+\begin{aligned} 
+L(\beta, \theta) &\propto \det(RD)^{-1/2} \int 
+\exp \bigg\{-\frac{1}{2} \bigg[ 
+\boldsymbol{w}^TR^{-1}\boldsymbol{w} + (M^{-1}\boldsymbol{a})^TMM^{-1}\boldsymbol{a} + 
+\underbrace{(b-M^{-1}a)^TM(b-M^{-1}a)}_{\text{the square we completed in 1.1}}
+\bigg]\bigg\} d\boldsymbol{b} \\
+&\propto \det(RDM^{-1})^{-1/2} 
+\underbrace{\exp \bigg\{-\frac{1}{2} \bigg[ 
+\boldsymbol{w}^TR^{-1}\boldsymbol{w} + (M^{-1}\boldsymbol{a})^TMM^{-1}\boldsymbol{a}
+\bigg]\bigg\}}_{\text{not a function of } \boldsymbol{b}}
+\int \exp \bigg\{-\frac{1}{2} \bigg[ {(b-M^{-1}a)^TM(b-M^{-1}a)} \bigg]\bigg\} d\boldsymbol{b} \\
+\end{aligned} 
+$$  
+The integral expression integrates to what must be $\det(M^{-1})$ since it is the kernel of 
+a Gaussian distribution.  
+Now, recalling the values of $w$, $M$, and $a$ from problem 1, notice that the expression in 
+the exponent now simplifies to $(Y-X\beta)^TV^{-1}(Y-X\beta)$:  
+$$
+\begin{aligned}
+& \boldsymbol{w}^TR^{-1}\boldsymbol{w} + (M^{-1}\boldsymbol{a})^TMM^{-1}\boldsymbol{a} \\
+&= (Y-X\beta)^TR^{-1}(Y-X\beta)+a^TM^{-1}MM^{-1}a \\
+&= (Y-X\beta)^TR^{-1}(Y-X\beta)+\underbrace{[Z^TR^{-1}(Y-X\beta)]^T}_{\text{expand transpose}}(Z^TR^{-1}Z+D)[Z^TR^{-1}(Y-X\beta)] \\
+&= \underbrace{(Y-X\beta)^TR^{-1}(Y-X\beta) + (Y-X\beta)^TR^{-1}Z(Z^TR^{-1}Z+D)[Z^TR^{-1}(Y-X\beta)]}_{\text{combine } (Y-X\beta) \text{ terms}} \\
+&= (Y-X\beta)^T(R^{-1}+R^{-1}Z(Z^TR^{-1}Z+D)Z^TR^{-1})(Y-X\beta) \\
+&= (Y-X\beta)^TV^{-1}(Y-X\beta)
+\end{aligned} 
+$$  
+
+Hence,  
+$$
+\begin{aligned}
+L(\beta, \theta) &\propto 
+\det(V)^{-1/2}\exp\bigg\{-\frac{1}{2} \bigg[ 
+(Y-X\beta)^TV^{-1}(Y-X\beta)
+\bigg]\bigg\}
+\end{aligned} 
+$$  
+
+and verifying that $\det(DRM^{-1}) = \det(DR(Z^TR^{-1}Z+D)^{-1}) = \det(ZDZ^T + R) = \det(V)$ we get:  
+$$
+\begin{aligned}
+l(\beta, \theta) = log[L(\beta, \theta)] &\propto \log\bigg(\det(V)^{-1/2}\exp\bigg\{-\frac{1}{2} \bigg[ 
+(Y-X\beta)^TV^{-1}(Y-X\beta)\bigg]\bigg\}\bigg) \\
+&\propto -\frac{1}{2}\text{log}(\det(V))-\frac{1}{2}(Y-X\beta)^TV^{-1}(Y-X\beta)
+\end{aligned}
+$$  
+as desired.  
+
+## (1.4)  
+
+Consider a random intercept and slope model for longitudinal data:  
+
+$$
+Y_{ij} = \beta_0 + \beta_1t_{ij} + b_{0i} + b_{1i}t_{ij} + \epsilon_{ij}
+$$  
+
+Use the BLUPs to calculate the estimator of the subject-specific trajectory $\mu_i(t)$ 
+and the variance estimator of $\hat{\mu}_i(t)$, where $\mu_i(t) = E[Y_i(t)|\boldsymbol{b}_i]$ 
+and $\boldsymbol{b}_i = (b_{0i}, b_{1i})^T$.  
+
+Per, 1.2 we have:  
+$$
+\begin{aligned}
+\hat{\beta} &= (X^TV^{-1}X)^{-1}X^TV^{-1}Y \\
+\hat{b} &= DZ^TV^{-1}(Y-X\hat{\beta}).
+\end{aligned}
+$$  
+
+Thus,  
+$$
+\begin{aligned}
+Y_{ij}(t) &= \beta_0 + \beta_1t_{ij} + b_{0i} + b_{1i}t_{ij} + \epsilon_{ij} \\
+\mu_i(t) = E(Y_{ij}|\boldsymbol{b}_i) &= E[\beta_0 + \beta_{1}t_{ij} + b_{0i} + b_{1i}t_{ij} + \epsilon_{ij}|\boldsymbol{b}_i] \\
+ &= E[X_i\boldsymbol{\beta}|\boldsymbol{b}_i] + E[Z_i\boldsymbol{b}_i|\boldsymbol{b}_i] + E[\epsilon_{ij}|\boldsymbol{b}_i] \\ 
+ &= X_i\boldsymbol{\beta} + Z_i\boldsymbol{b}_i + 0 \\
+ &= X_i(X_i^TV^{-1}X_i)^{-1}X_i^TV^{-1}Y_i + Z_iDZ_i^TV^{-1}Z_i(Y_i-X_i\beta)
+\end{aligned}
+$$
+
+To compute the variance of the estimator $\hat{\mu}_i(t)$ notice that we assume $b \perp \beta$.  
+Then, the variance of the estimator $\hat{\mu}_i(t)$ is:  
+
+$$
+\begin{aligned}
+Var(\hat{\mu}_i(t)) &= Var(X_i\hat{\boldsymbol{\beta}} + Z_i\hat{\boldsymbol{b}}_i) + Var(\epsilon_{ij}) \\
+&= Var(X_i\hat{\boldsymbol{\beta}}) + Var(Z_i\hat{\boldsymbol{b}}_i) + Var(\epsilon_{ij}) \\
+&= X_i^TVar(\hat{\boldsymbol{\beta}})X + Z_i^TVar(\hat{\boldsymbol{b}_i})Z + Var(\epsilon_{ij}) \\
+&= X_i^T[X^TV^{-1}X]^{-1}X_i + Z_i^TD^{-1}Z_i+R
+\end{aligned}
+$$  
+
+The variance of $\hat{\beta}$ comes from the inverse of the Information Matrix:  
+
+$$
+\mathcal{I} = 
+\begin{bmatrix}
+\mathcal{I}_{\beta_0 \beta_0} & \mathcal{I}_{\beta_0 \beta_1} & \dots & \mathcal{I}_{\beta_0 \theta_2} \\
+\mathcal{I}_{\beta_1 \beta_0} & \mathcal{I}_{\beta_1 \beta_1} \\
+\vdots \\
+\mathcal{I}_{\theta_2 \beta_0} & \mathcal{I}_{\theta_2 \beta_1} & \dots & \mathcal{I}_{\theta_2 \theta_2}
+\end{bmatrix} = 
+\begin{bmatrix}
+X^TV^{-1}X^T & 0 \\
+0 & \{\frac{1}{2}\text{tr}(V^{-1}\frac{\partial V}{\partial \theta_j} V^{-1}\frac{\partial V}{\partial \theta_k}) \}
+\end{bmatrix}
+$$  
+
+Hence, 
+$$
+\mu_i(t) = X_i^T[X^TV^{-1}X^T]^{-1}X_i + Z_i^T \bigg\{\frac{1}{2}\text{tr}(V^{-1}\frac{\partial V}{\partial \theta_i} V^{-1}\frac{\partial V}{\partial \theta_i})\bigg\}Z^T_i+\theta_i
+$$
+
+## Problem 2  
+
+## (2.1)
+
+Consider $n$ independent observations $(X_i,Y_i)$ and the classical linear model 
+$Y_i = X_i^T \beta + \epsilon_i$, where $X_i$ is a $p\times1$ vector and 
+$\epsilon_i \sim N(0,\sigma^2)$. This is a special case of Problem1. 
+Using the error contrasts, show the REML estimator of $\sigma^2$ is 
+
+$$
+\hat{\sigma}^2_{ReML} = \frac{1}{1-n}\sum_{i=1}^n(Y_i-X_i^T\beta)^2,
+$$ 
+  
+where $\hat{\beta}$ is MLE of $\beta$.  
+
+The central problem we're dealing here is that ML produces biased estimates for $\sigma^2$ 
+given that it does not account for the $k$ degrees of freedom we eat up when estimating the 
+$\beta$ vector of parameters for each column in X.  
+
+The idea of ReML is to take the vector $\boldsymbol{y}$ and transform it into another vector 
+$\boldsymbol{w}$ such that it has expectation 0 regardless of what $\boldsymbol{\beta}$ is. Then 
+we can use $\boldsymbol{w}$ to estimate $\sigma^2$. So, we need to find a transformation $S$ 
+such that $S\boldsymbol{y}=\boldsymbol{w}$ and  
+$$
+E(\boldsymbol{w}) = E(S\boldsymbol{y}) = SE(\boldsymbol{y}) = SX\boldsymbol{\beta}=\boldsymbol{0}
+$$
+What should $S$ be?  
+
+Well, define a vector $\boldsymbol{a}$ such that $\boldsymbol{a}^TX=0$. Then 
+$\boldsymbol{a}^T\boldsymbol{y}$ is an error contrast. For a matrix X with $k$ columns, 
+we can find $N-k$ such vectors. (Think about it: in a space spanned by two linearly 
+independent vectors--such as the column space of a matrix in $R^{3\times2}$--only 
+one vector--the vector $[0,0,1]^T$--is orthogonal to all vectors in this $3\times2$ 
+matrix. Thus $N-k=3-2=1$). If we pack all such vectors into matrix $A$, then 
+$A^TX=\boldsymbol{0}$ and $E(A^T\boldsymbol{y})=0$). Based on Harville 1974, define 
+$S=I-X(X^TX)^{-1}X^T$. $S:=A$. Furthermore, $AA^T=S$ and $A^TA=I$.
+
+The error contrast vector $\boldsymbol{w}=A^Ty=A^T(X\beta+\epsilon)=A^T\epsilon$, and 
+$$
+A^T\epsilon \sim N(0, A^THA).
+$$  
+
+Notice $A^T\epsilon$ has no $\beta$ terms. We can now estimate $\sigma^2$ using the 
+(residual) likelihood function $L(\sigma^2|A^Ty)$ which does not spend a degree of 
+freedom estimating $\beta$ and hence produces unbiased estimates of $\sigma^2$.  
+
+Also notice $X(X^TX)^{-1}X^T$ a projection matrix (commonly known as the Hat matrix). 
+Hence $S=(I-P)$ and 
+$\boldsymbol{z}=S\boldsymbol{y} = (I-P)\boldsymbol{y}=\boldsymbol{y}-P\boldsymbol{y}$, which 
+means $y$ - residuals, hence the name "Residual ML."  
+
+So, deriving the ReML likelihood for Per Harville, for the $Y=X\beta+\epsilon$ case we get:  
+
+$$
+\begin{aligned}
+L(\sigma^2|A^Ty) &= f_w(A^Ty|\sigma^2) \\
+&= f_w(A^Ty|\sigma^2) \int f_{\hat{\beta}}(\hat{\beta}|\beta,\sigma^2)d\hat{\beta} \\
+&= \int f_w(A^Ty|\sigma^2) f_{\hat{\beta}}(\hat{\beta}|\beta,\sigma^2)d\hat{\beta} \\
+&= \int f_w(A^Ty|\sigma^2) \underbrace{f_{\hat{\beta}}(G^Ty|\beta,\sigma^2)d\hat{\beta}}_{\text{exchangeability}} \\
+&= \int \underbrace{f_{w,\hat{\beta}}(A^Ty, G^Ty|\beta,\sigma^2)}_{\text{in vector notation}}d\beta \\
+&= \int f_y([A \text{ }\text{ }G]^Ty|\beta,\sigma^2)d\beta \\
+&= \frac{1}{|\det([A \text{ } G])|}\int f_y(y|\beta, \sigma^2)d\beta 
+\end{aligned}
+$$  
+
+Now, $|det([A \text{ } G])|$ can be expressed in terms of X:  
+
+$$
+\begin{aligned}
+|det([A \text{ } G])| &= \bigg(\det([A \text{ } G]^T[A \text{ } G])\bigg)^{1/2} \\
+&=
+\bigg(\det
+\begin{bmatrix}
+A^TG & A^TG \\
+G^TA & G^TG
+\end{bmatrix}
+\bigg)^{1/2} \\
+&= (\det(\underbrace{A^TA}_{I_n \text{ because it's real symmetric}}))^{1/2} (\det(G^G - G^TA(A^TA)^{-1}A^TG))^{1/2} \\
+&= (\det(I))^{1/2}(\det(G^TG - G^T\underbrace{AI^{-1}A^T}_{\text{by definition } AA^T=S}G))^{1/2} \\
+&= (\det(G^TG-G^TSG))^{1/2} \\
+&= (\det(X^TX))^{-1/2}
+\end{aligned}
+$$
+Thus, continuing with the residual likelihood per Harville:    
+$$
+\begin{aligned}
+&= (\det X^TX )^{1/2} \int f_y(y|\beta,\sigma^2)d\beta \\
+&= (\det X^TX )^{1/2} \int \frac{1}{\sqrt{(2\pi)^n\det V}} \exp\bigg\{ -\frac{1}{2} \bigg[\underbrace{(y-X\beta)^TV^{-1}(y-X\beta)}_{\text{can be decomposed in terms of } \beta \text{ and } \hat{\beta}}\bigg] \bigg\}d\beta \\
+&= (\det X^TX )^{1/2}(2\pi)^{n/2}\det(V)^{-1/2} \exp \bigg\{ -\frac{1}{2}\bigg[(y-X\hat{\beta})^TV^{-1}(y-X\hat{\beta})\bigg]\bigg\} 
+\underbrace{
+\int 
+\exp \bigg\{ -\frac{1}{2}\bigg[(\beta-\hat{\beta})^TV^{-1}(\beta-\hat{\beta})\bigg]\bigg\} 
+d\beta}_{\text{integrates to a Gaussian constant}} \\
+&= (2\pi)^{-1/2(n-p)}(\det (X^TX) )^{1/2}\det(V)^{-1/2}(\det(X^TV^{-1}X)^{-1/2})
+\exp \bigg\{ -\frac{1}{2}\bigg[(y-X\hat{\beta})^TV^{-1}(y-X\hat{\beta})\bigg]\bigg\} 
+\end{aligned}
+$$  
+Taking log to obtain loglikelihood:  
+$$
+\begin{aligned}
+l(\sigma^2|A^T\boldsymbol{y}) &= \log[L(\sigma^2|A^T\boldsymbol{y})] \\
+&= -\frac{1}{2}(n-p)\log(2\pi) + \frac{1}{2}\log[\det(X^TX)]-\frac{1}{2}\log[\det(V)]-\frac{1}{2}\log[\det(X^TV^{-1}X)]-\frac{1}{2}(y-X\hat{\beta})^TV^{-1}(y-X\hat{\beta})
+\end{aligned}
+$$  
+Now, taking the derivative with respect to $\sigma^2$ which lives inside $V$:  
+$$
+\begin{aligned}
+&= \frac{\partial}{\partial \sigma^2} \bigg[ -\frac{1}{2}(n-p) \log(\sigma^2) -\frac{1}{2\sigma^2}(y-X\hat{\beta})^T(y-X\beta)\bigg] \\
+\end{aligned}
+$$  
+
+Setting it to zero and solving for $\sigma^2$ we get $(n-p)^{-1}(y-X\hat{\beta})^T(y-X\hat{\beta})$ as desired.  
+
+## (2.2)  
+
+Show REML likelihood of $\theta$ for $\boldsymbol{Y}=X\beta + Z\boldsymbol{b} + \boldsymbol{e}$ is:
+$$
+l_{REML} = -\frac{1}{2}\log(\det(X^TV^{-1}X)) -\frac{1}{2} \log(\det(V))-\frac{1}{2}(Y-X\hat{\beta}-Z\hat{b})^TR^{-1}(Y-X\hat{\beta}-Z\hat{b})-\frac{1}{2}\hat{b}^TD^{-1}\hat{b}.
+$$  
+Starting from the equations we derived in 2.1, remembering that b has mean 0, 
+and using the results from problem 1, we see that:  
+$$
+\begin{aligned}
+&= (\det X^TX )^{1/2} \int f_y(y|\beta,\sigma^2)d\beta \\
+&= (\det X^TX )^{1/2} \int \frac{1}{\sqrt{(2\pi)^n\det V}} \exp\bigg\{ -\frac{1}{2} \bigg[\underbrace{
+(y-X\beta-Zb)^TV^{-1}(y-X\beta-Zb)
+}_{\text{can be decomposed in terms of } \beta \text{ and } \hat{\beta}}\bigg] \bigg\}d\beta \\
+&= (\det X^TX )^{1/2}(2\pi)^{n/2}\det(V)^{-1/2} \\
+& \exp \bigg\{ -\frac{1}{2}\bigg[ \underbrace{(y-X\hat{\beta}-Z\hat{b})^TV^{-1}(y-X\hat{\beta}-Z\hat{b})}_{\text{split into } y-X\beta-Zb \text{ and } b}\bigg]\bigg\} \\
+& \int \exp \bigg\{ -\frac{1}{2}\bigg[(\beta-\hat{\beta})^TV^{-1}(\beta-\hat{\beta})\bigg]\bigg\} d\beta \\
+&= (\det X^TX )^{1/2}(2\pi)^{n/2}\det(V)^{-1/2} \exp \bigg\{ -\frac{1}{2}\bigg[(y-X\hat{\beta}-Z\hat{b})^TR^{-1}(y-X\hat{\beta}-Z\hat{b})\bigg]\bigg\} \\
+& \exp \bigg\{ -\frac{1}{2}\bigg[\hat{b}^TD^{-1}\hat{b}\bigg]\bigg\} \\
+& \underbrace{
+\int 
+\exp \bigg\{ -\frac{1}{2}\bigg[(\beta-\hat{\beta})^TV^{-1}(\beta-\hat{\beta})\bigg]\bigg\} 
+d\beta}_{\text{integrates to a Gaussian constant}} \\
+&= (2\pi)^{-1/2(n-p)}(\det (X^TX) )^{1/2}\det(V)^{-1/2}(\det(X^TV^{-1}X)^{-1/2}) \\
+& \exp\bigg\{ -\frac{1}{2}(\hat{b}^TD^{-1}\hat{b}) \bigg\}\\
+& \exp \bigg\{ -\frac{1}{2}\bigg[(y-X\hat{\beta}-Z\hat{b})^TV^{-1}(y-X\hat{\beta}-Z\hat{b})\bigg]\bigg\}
+\end{aligned}
+$$  
+
+And after taking log we obtain the loglikelihood $l_{REML}$:  
+$$
+-\frac{1}{2}\log(\det(X^TV^{-1}X)) -\frac{1}{2} \log(\det(V))-\frac{1}{2}(Y-X\hat{\beta}-Z\hat{b})^TR^{-1}(Y-X\hat{\beta}-Z\hat{b})-\frac{1}{2}\hat{b}^TD^{-1}\hat{b}
+$$  
+as desired. 
+
+
+
+
+## (2.3)  
+
+Prove the REML likelihood can be obtained by the Bayesian model assuming a flat prior for $\beta$, 
+i.e., 
+$$
+L_{ReML}(\theta) = \int L(Y|\beta,\theta)d\beta
+$$
+Recall the identity shown in Harville where:  
+
+$$
+(Y-X\beta)V^{-1}(Y-X\beta) = (Y-X\hat{\beta})^TV^{-1}(Y-X\hat{\beta})+(\beta-\hat{\beta})^T(X^TV^{-1})X)(\beta-\hat{\beta})
+$$  
+Then we have that the REML likelihood is the same as the Bayesian model with flat prior for $\beta$:   
+$$
+\begin{aligned}
+L_{ReML}(\theta) &= \int L(Y|\beta,\theta)d\beta \\
+&= \frac{1}{(2\pi\det(V))^{1/2}} \int \exp \bigg\{ -\frac{1}{2} \bigg[ (Y-X\beta)V^{-1}(Y-X\beta) \bigg]  \bigg\} d\beta \\
+&= \frac{1}{(2\pi\det(V))^{1/2}} \int \exp \bigg\{ -\frac{1}{2} 
+\bigg[ 
+(Y-X\hat{\beta})^TV^{-1}(Y-X\hat{\beta})+(\beta-\hat{\beta})^T(X^TV^{-1}X)(\beta-\hat{\beta})
+\bigg]  \bigg\} d\beta \\
+&= \frac{1}{(2\pi\det(V))^{1/2}} \exp \bigg\{ -\frac{1}{2}
+\bigg[ 
+(Y-X\hat{\beta})^TV^{-1}(Y-X\hat{\beta}) 
+\bigg] \bigg\} 
+\underbrace{\int \exp \bigg\{ -\frac{1}{2}
+\bigg[
+(\beta-\hat{\beta})^T(X^TV^{-1}X)(\beta-\hat{\beta})
+\bigg] \bigg\}d\beta}_{\text{integrates to a Gaussian constant}} \\
+&= \det(V)^{-1/2}\det(X^TV^{-1}X)^{1/2} \exp \bigg\{ -\frac{1}{2}
+\bigg[ 
+(Y-X\hat{\beta})^TV^{-1}(Y-X\hat{\beta}) 
+\bigg] \bigg\} 
+\end{aligned}
+$$
+as desired.  
+
+
+## (2.4)  
+
+Consider a random intercept and slope model for longitudinal data 
+$$
+Y_{ij} = X_i^T\beta+b_i+\epsilon_{ij}
+$$  
+where $b_i \sim N(0, \sigma^2)$ and $\epsilon_{i,j}$, where $i$ goes from 1 to 200, and 
+n = 3. (There are 200 clusters and 3 measurements within cluster.) Write R code to 
+manually optimize the Likelihood and the Residual likelihood for $\sigma^2$ and $theta$. 
+Where $sigma^2=1$ and $\theta=1$ and $\beta = [1, 0.5]^T$.  Then report your manual 
+results and compare them against existing software such as `lmer`.  
+
+Did that. (See appendix for code). 
+The following table shows the results.  
+```{r, echo=FALSE}
+knitr::kable(tabp2, digits=3, caption = "")
+```
+
+
+The ReML results from are closer to the actual $\sigma^2$ and $\theta$ overall, as expected.  
+Perhaps this can be approached better by ploting bias. 
+
+```{r, echo=FALSE}
+par(mfrow = c(1,2))
+x <- as.numeric(tabp2[1,2:ncol(tabp2)])
+plot(x=x, y=c(1,2,3,4), 
+     xlab = "sigma^2 estimate", 
+     ylab = "",
+     xlim = c(0.97, 1.02), 
+     yaxt = "n",
+     ylim = c(1,5))
+abline(v = 1, col="red", lwd=3, lty=2)
+     text(x, 
+          y=c(1,2,3,4)+.1, 
+          labels=c("lmer ML","by hand ML","lmer ReML","by hand ReML"))
+
+x <- as.numeric(tabp2[2,2:ncol(tabp2)])     
+plot(x=x, y=c(1,2,3,4), 
+     xlab = "theta estimate", 
+     ylab = "",
+     xlim = c(0.97, 1.02), 
+     yaxt = "n",
+     ylim = c(1,5))
+abline(v = 1, col="red", lwd=3, lty=2)
+     text(x, 
+          y=c(1,2,3,4)+.1, 
+          labels=c("lmer ML","by hand ML","lmer ReML","by hand ReML"))
+par(mfrow = c(1,1))          
+```
+
+
+
+
+
+
+## Problem 3  
+
+ChatGPT has proven to be a new, potentially useful tool for a wide range of tasks. One 
+interesting functionality is the ability to recommend particular analytic approaches 
+for particular data analyses. However, ChatGPT is simply a tool (just like Google) and not 
+infallible. Please log into ChatGPT and play around. Then for this assignment, ask ChatGPT 
+for advice on whether you should use REML or ML (carefully consider how you word the prompt).
+
+## (3.1)  
+
+Provide the prompt you provided to ChatGPT as well as the corresponding response.  
+
+
+```{r, echo=FALSE, out.width="89%", fig.align='center'}
+knitr::include_graphics("ChatGPT on MLvsReML.png")
+```
+
+## (3.2)  
+
+Assess (verify or disprove) the accuracy of what ChatGPT tells you. 
+You may do this analytically (i.e. mathematically) or by conducting simulations.
+
+ChatGPT suggests that REML should be used in cases where my sample size is small, and 
+it claims that ML estimates are unstable. I test its advice with a simulation. 
+I first create correlated data in the same fashion as in homework 1, except that this time 
+I run a linear mixed model wto account for the random intercept effect. I do so by running 
+R's function `lme4::lmer` with ML and then with ReML. I then report the true variance 
+(which I know because I baked it in the data I constructed) and then bias with ML and 
+with ReML. I did so at various combinations of subjects ($m$) and measurements ($n$) to 
+test whether ReML was preferable (in terms of lower bias) over ML with small $m$ or small $n$.  
+I help $\rho$ constant at 0.85 to ensure high correlation in the data.  
+
+The following table shows results:
+```{r, echo=FALSE}
+knitr::kable(tab[,c("m","n","N","bias_var_ML","bias_var_ReML")], digits = c(1,1,1,2,2))
+```
+
+Indeed ChatGPT's advice has merit. When the sample size is small, ML underestimates the 
+true variance, whereas ReML is a lot closer to it. As the number of clusters/subjects ($m$) 
+goes up and the number of measurements ($n$) the difference between the two approaches in 
+terms of estimating the variance is small.  
+
+Mathematically, we saw in Problem 2 that ReML produces unbiased estimates for the variance.  
+Here, I could show how ML *is* biased and then vindicate ChatGPT that way too. I decided to 
+go the simulation route because it's mroe fun.  
+
+## Problem 4  
+
+## (4.1)  
+
+Fit an appropriate linear mixed model to study how cholesterol level changes over time and 
+how it is related to age, gender, and BMI.  
+
+To see how cholesterol changes over time, I first plot all records as if they were independent 
+samples. 
+
+```{r, echo=FALSE, out.width="60%", fig.align = 'center'}
+  # naive plot all
+  plot(df$cholesterol~df$t, xlab="time", ylab="cholesterol", xaxt="n", main = "chol by time: all measurements")
+  abline(lm(df$cholesterol~df$t), col='red')
+  axis(1, at = seq(from=0, to=10, by=2), labels = c("baseline","2y","4y","6y","8y","10y"))
+```
+
+As we can see, it seems like cholesterol does not change very much overtime. (Slope is a 
+bit flat.) But, there might be cohort, or subject effects. That is, it might go up for 
+some folks and not others. We randomly select 5 subjects to inspect.  
+
+```{r, echo=FALSE, out.width="60%", fig.align = 'center'}
+  # naive plot 5 randomly selected
+ plot(df_rand_all$cholesterol~df_rand_all$t, xlab="time", ylab="cholesterol", xaxt="n", main = "five random cases")
+  axis(1, at = seq(from=0, to=10, by=2), 
+       labels = c("baseline","2y","4y","6y","8y","10y"))
+  abline(lm(df_rand_all$cholesterol[df_rand_all$id == rand_id[1]]~df_rand_all$t[df_rand_all$id == rand_id[1]]), col='blue')
+  abline(lm(df_rand_all$cholesterol[df_rand_all$id == rand_id[2]]~df_rand_all$t[df_rand_all$id == rand_id[2]]), col='orange')
+  abline(lm(df_rand_all$cholesterol[df_rand_all$id == rand_id[3]]~df_rand_all$t[df_rand_all$id == rand_id[3]]), col='red')
+  abline(lm(df_rand_all$cholesterol[df_rand_all$id == rand_id[4]]~df_rand_all$t[df_rand_all$id == rand_id[4]]), col='darkgreen')
+  abline(lm(df_rand_all$cholesterol[df_rand_all$id == rand_id[6]]~df_rand_all$t[df_rand_all$id == rand_id[6]]), col='purple')
+```  
+So, it goes up for some quite dramatically, and not as dramatically for others.  
+
+We now turn to exploring whether there might be an interaction with `gender`. In other 
+words, does the passage of time affect males differently than females when it comes to 
+cholesterol? We plot a regression line by gender and inspect whether the slopes differ.  
+
+```{r, echo=FALSE, out.width="60%", fig.align = 'center'}
+  # naive plot all
+  plot(df$cholesterol~df$t, xlab="time", ylab="cholesterol", xaxt="n", main = "chol over time by sex: all measurements")
+  abline(lm(df[df$gender == 1,]$cholesterol~df[df$gender == 1,]$t), col='lightblue', lwd=4.0)
+  abline(lm(df[df$gender == 2,]$cholesterol~df[df$gender == 2,]$t), col='pink',lwd=4.0)
+  axis(1, at = seq(from=0, to=10, by=2), 
+       labels = c("baseline","2y","4y","6y","8y","10y")) 
+```  
+
+The slope seems to be pretty similar across both groups.  
+
+Lastly, we explore whether cholesterol goes up with age, but at different rates for males 
+than for females. The plot on the left has all measurements naively treated as individual subjects, 
+the plot on the left displays six randomly selected subjects (3 males and 3 females) 
+along with all their measurements.  
+(Note that because age was taken at enrollment, we manually increased age by 2 at each 2-year measurement.)
+
+```{r, echo=FALSE, out.width="75%", fig.align='center'}
+  par(mfrow=c(1,2))
+  # age and sex and cholesterol
+  plot(df$cholesterol~df$age, xlab="age", ylab="cholesterol", xaxt="n")
+  abline(lm(df[df$gender == 1,]$cholesterol~df[df$gender == 1,]$age), col='lightblue', lwd=4.0)
+  abline(lm(df[df$gender == 2,]$cholesterol~df[df$gender == 2,]$age), col='pink',lwd=4.0)
+
+  # age and sex and cholesterol random sample
+  plot(df_rand$cholesterol~df_rand$age, xlab="age", ylab="cholesterol", main = "chol over age by sex:\n6 random subjects")
+  abline(lm(df_rand[df_rand$gender == 1 & df_rand$id == example_male[1],]$cholesterol~
+            df_rand[df_rand$gender == 1 & df_rand$id == example_male[1],]$age), col='lightblue', lwd=4.0)
+  abline(lm(df_rand[df_rand$gender == 2 & df_rand$id == example_female[1],]$cholesterol~
+            df_rand[df_rand$gender == 2 & df_rand$id == example_female[1],]$age), col='pink',lwd=4.0)
+  
+  abline(lm(df_rand[df_rand$gender == 1 & df_rand$id   == example_male[2]  ,]$cholesterol~
+              df_rand[df_rand$gender == 1 & df_rand$id == example_male[2]  ,]$age), col='lightblue', lwd=4.0)
+  abline(lm(df_rand[df_rand$gender == 2 & df_rand$id   == example_female[2],]$cholesterol~
+              df_rand[df_rand$gender == 2 & df_rand$id == example_female[2],]$age), col='pink',lwd=4.0)
+  
+  abline(lm(df_rand[df_rand$gender == 1   & df_rand$id == example_male[3],]$cholesterol~
+              df_rand[df_rand$gender == 1 & df_rand$id == example_male[3],]$age), col='lightblue', lwd=4.0)
+  abline(lm(df_rand[df_rand$gender == 2.  & df_rand$id == example_female[3],]$cholesterol~
+              df_rand[df_rand$gender == 2 & df_rand$id == example_female[3],]$age), col='pink',lwd=4.0)    
+  par(mfrow=c(1,1))
+```
+
+It appears that cholesterol goes up with age, but at different rates for men and women. We 
+thus include the interaction $\text{age}\times\text{gender}$.  
+
+Up until now we've treated these data as if they came from different individuals and were 
+independent. We know that is not true because there are about 6 measurements from each subject. 
+Thus we fit a random effects model allowing for a subject-specific effect and a time slope, 
+meaning that the passage of time affects individuals differently:  
+
+$$
+\text{cholesterol} = X\beta + Zb + e
+$$  
+
+where X is a design matrix composed of a vector of 1s, BMI (at enrollment and after 10 years) 
+gender indicator (2=female), age (at enrollment), and the interaction of the age and gender. 
+Z is a design matrix as well, but it is composed of a block matrix of 1s for a 
+subject-specific intercept, and the values of the X matrix for time to estimate a time slope.  
+
+```{r, echo=FALSE}
+knitr::kable(coeffs1[,1:2], digits = 2, caption = "Random Slope Model")
+```
+
+After adding a random effect per subject, as well as a random slope effect for time per subject, 
+we see that women have about 79 cholesterol points lower than males. Aging one year seems 
+to be associated with an increase in 0.28 cholesterol points.  
+
+By fitting this model, we've estimated two random effects: subject intercept as well 
+as the slope effect of time. This question concerns about the effect of the rate of change 
+of cholesterol (i.e. $\partial \text{cholesterol}/\partial \text{time}$). Now that we have 
+that, we can include it in a logistic regression to see how the rate of cholesterol change 
+over time (i.e. not age) impacts the risk of death 30 years later.  
+
+
+## (4.2)  
+
+We now turn to assessing the association of cholesterol (as it changes over time) and 
+30-year risk of death adjusted for age, gender, and BMI.  
+
+Using the estimates of rate of change we got in 4.1, we can then run a logistic regression 
+using one observation per subject (given that the covariates will be constant within 
+subject) to get an odds-ratio of the odds of experiencing death at 30 years after enrollment.  
+
+$$
+\log \bigg( \frac{P(\text{dead}=1)}{P(\text{dead}=0)} \bigg) = W\Gamma
+$$  
+
+where $W$ is a matrix composed of a vector of 1s, the random slope for time from problem 1 (
+which represents the rate of cholesterol level during the 10 year study), and the covariates 
+X from above, held at baseline. $\Gamma$ is a vector of coefficients, which we display in the 
+table below, after exponentiating them to obtain odds ratios.  
+
+```{r, echo=FALSE}
+knitr::kable(coeffs2, digits = c(3,3,2,2), caption = "Logistic Model")
+```
+
+The odds of death after 30 years for a unit increase in the change rate of cholesterol over time 
+seem to be 4% lower, however this result is not statistically significant.  
+In other words, after controlling for age (at enrollment), bmi, and gender, the change of cholesterol over 
+time does not seem to have an effect on the risk of death after 30 years. 
+
+
+## (4.3)  
+
+Suppose you have time to develop your own program, what is a better and more systematic 
+approach (or model) would you like to propose to answer the question in (2)?  
+
+I would like to use a Generalized Mixed Model where I could make `dead` the dependent 
+variable, cholesterol one of the covariates--along with bmi (which would be nice to also 
+have measurements every 2 years), age, gender, cigarettes, and perhaps other 
+time-varying covariates. That way I could take advantage of the panel nature of the data, 
+account for its correlation, and measure directly the slope of cholesterol on the risk 
+of death after 30 years. 
+
+
+
+
+
+
+
+
+
+
