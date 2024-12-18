@@ -1,0 +1,187 @@
+---
+title: "Homework 5"
+author: "Raul Torres Aragon"
+date: "2023-02-28"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+library(dplyr)
+knitr::opts_chunk$set(echo = FALSE)
+load("hw5_objects.RData")
+```
+
+## Problem 1  
+
+Empirically (via simulation), assess the performance of complete-case and available-case analysis under Mixed Models and GEE under the three distinct situations in which dropouts that are: MCAR, MAR and MNAR.  
+
+## (1)  
+
+To assess this, I first correalted data sets with random intercept: $Y_i=\beta_0 + \beta_1 X_{1ij} + \beta_2 X_{2ij} + b_i + e$ where $Y$ is continuous, $\beta_0=1$, $\beta_1 = 2$ and $\beta_2 = 0.5$. $X_1$ is a binary indicator which can be thought of as treatment/control indicator. $b_i \sim N(0, \theta)$, $e \sim N(0,1)$, $\theta = -(\rho*1^2)/(\rho-1)$, and $\rho = 0.61$.  
+
+I then set make three copies of the generated data set. For each copy, I set different $Y$ entries to missing according to the following patterns:  
+
+**MCAR** For missing completely at random (MCAR), I randomly select 30% of all Y values and set them to missing. If one of such values happens to be the first measurement of a subject, I revert back to its Y value, so that the missingess mimics subjects dropping out once they had signed up and had a first measurement. I call this MCAR dataset.   
+
+**MAR** For missing at random (MAR) I set values to missing with probability 70% if $X_1 = 1$, and 2% if $X_1 = 0$. In other words, the missingness pattern is a function of $X_1$, an observed variable. This leads to about 35% missingness. Again, if this missing assignment falls in a $Y$ value that is the first measurement of a subject, I revert back to its $Y$ value. I call this MAR dataset.  
+
+**MNAR** Lastly, for missing not at random, I set $Y$ values to missing with 90% chance if they are below the 35th percentile (unless that $Y$ value falls in a first measurement) of the Y value. In other words, the missingness is a function of Y itself and as such, theoretically, we never observe the missingness pattern. I call this MNAR dataset.  
+
+Once I've poked holes in the Y vector as described above, I extend the missingness through the end of the cluster. In other words, if any of the three types of missingness happens on measurement n or greater, I set to missing the remainder of the cluster. For example, if the MCAR mechanism leads me to set measurment n=2 in cluster $m$, I then also set to missing measurements $3,4, \dots n$ of cluster $m$ to simulate drop out behavior.  
+
+Next, I fit three models to each of the three datasets: GEE with exchangeable correlation, GEE with unstructured correlation, and an LMM model with a random intercept. The idea is to capture the true $\beta_1$ coefficient. I save the estimates, standard errors, and an indicator for whether the 95% confidence interval covered the true $\beta_1$ coefficient.  
+Now, I feed each model two versions of each of the three data sets: one with complete cases, and one with available cases. Complete cases are all clusters with no missingness whatsover. So, if a cluster has missingess starting at a given measurement, I throw away the whole cluster. For available cases, I simply throw away the row/measurement that has missingess, but I leave the remainder of the measurements in the cluster.  
+
+I then repeat the process 100 times per $m,n$ combination, and take the mean of each estimate, proportion of times 95% covered true $\beta_1$, and standard deviation of each estimate (empirical standard error).    
+
+So, to sum up, I:  
+
+- generate correlated data  
+- make three copies of the dataset  
+- set Y values to missing according to MCAR, MAR, and MNAR respectively  
+- fit GEE EX, GEE UN, and LMM on each of the three datasets with complete cases  
+- fit GEE EX, GEE UN, and LMM on each of the three datasets with available cases  
+- repeat 99 more times  
+- move to next $m$, $n$ combination  
+
+The following tables presents results for $m=65$ and $n=4$, 
+
+```{r}
+knitr::kable(tab3[,-c(1,2,3,4,12,13,14,15,16,17)], digits = 2,
+caption = "beta1 estimate bias under three types of missing patterns")
+```  
+
+```{r}
+knitr::kable(tab3[,-c(1,2,3,4,9,10,11,15,16,17)], digits = 2,
+caption = "beta1 coverage under three types of missing patterns")
+```  
+
+Notice that coverage is very high when using all available cases. This could very well be because wider standard errors. $\hat{\beta_1}$ bias tends to be low for LMM under MAR and MCAR. $\hat{\beta_1}$ bias is also good for GEE under MCAR and when correlation is exchangeable, for MAR as well. GEE with unstructured correlation is only good under MCAR. $\hat{\beta_1}$ bias is awful under MNAR as expected.  
+
+The same is generally true under complete cases. $\hat{\beta_1}$ bias and coverage are worse, except under MCAR. Under MAR, LMM and GEE with exchangeable correlation do better than under MNAR, but definitely worse than under MNAR. Coverage is genreally bad under MNAR.
+
+Let's turn to a scenario with fewer clusters but more measurements. The following tables present results for $m=30$ and $n=10$.  
+
+```{r}
+knitr::kable(tab2[,-c(1,2,3,4,12,13,14,15,16,17)], digits = 2,
+caption = "beta1 estimate bias under three types of missing patterns")
+```  
+
+```{r}
+knitr::kable(tab2[,-c(1,2,3,4,9,10,11,15,16,17)], digits = 2,
+caption = "beta1 coverage under three types of missing patterns")
+```  
+
+The story is very similar as above, except that coverage is 0.0 for one of the GEE runs. This could very well be because of the very small number of cases (4) due to insisting on using only complete cases. Again, GEE and LMM seem to behave very similarly, with a slight preference for LMM under MAR. I would assume this would change if the underlying correlated data were binary or otherwise non-Gaussian.  
+
+The following figure shows the bias of $\hat{\beta_1}$ under different missing patterns for *available* cases with 26 clusters and $n\in$ {5,10,20,40,80}. (Missingness ranges from 20% to 40%.)  
+
+
+```{r out.width="79%", fig.align='center'}
+make_plot(mf=0.2)
+```  
+
+```{r out.width="79%", fig.align='center'}
+make_plot(mf=0.3)
+```  
+
+```{r out.width="79%", fig.align='center'}
+make_plot(mf=0.4)
+```  
+
+GEE with exchangeable correlation structure and LMM are very similar given the Gaussianity of $Y$. They both are unbiased under MAR and MCAR, but not so under MNAR. Even as I hold $m$ fixed and increase $n$, the biasedness remains even at 20% missingness.  
+
+
+## Problem 2  
+For many applied statisticians, we spend much more time designing studies than we do in carrying out analysis. Suppose that a researcher approaches you with the following proposal. Please help them in developing (1) the Statistical Analysis Plan section and (2) the power and sample size section. Note that since the sample size is fixed (often due to cost or availability of subjects), we would want to calculate the minimum detectable effect sizes. You will need to make assumptions, which is fine, but be explicit in noting the assumptions made. Typically, the power analysis also involves picking a primary endpoint.
+Here is the study proposal:  
+
+Title: "The Influence of Taylor Swift on Graduate Students' Academic Performance and Mental Health: A Longitudinal Study". 
+
+Objective: To investigate the impact of Taylor Swift on the academic performance and mental health of graduate students over a period of two years.  
+
+Summary of Methodology:  
+
+Participants: The study will recruit 200 graduate students (100 male and 100 female) from two universities in the United States. Participants will be selected based on their willingness to participate, and they should be Taylor Swift fans.
+Procedure: The study will be conducted over two years, with data collection taking place at four time points (baseline, 6 months, 12 months, and 24 months). At baseline, participants will complete a survey that collects information on their demographics, academic performance, and mental health. They will also complete a Taylor Swift fandom questionnaire, which assesses their level of interest in Taylor Swift and their knowledge of her music.  
+At each time point, participants will complete follow-up surveys that measure their academic performance (e.g., GPA, academic progress) and mental health (e.g., stress, anxiety, depression). They will also complete the Taylor Swift fandom questionnaire at each time point to assess any changes in their level of interest and knowledge of Taylor Swift.  
+Note that this is very typical of the types of project proposals that you may see in practice. The investigator hasn't specifically identified a particular endpoint and that is often left to the statistician. It is up to you to "simplify" the study and abstract it sufficiently to be able to write a section. There are no "wrong" answers to this aspect as long as you are stating what you're treating as the endpoints.  
+
+
+## (1)  
+
+We want to assess the effect of Taylor-Swift fandom (TSF) on anxiety/depression and academic performance. 
+
+Statistical Plan  
+
+We will analyze these data using a *multivariate* linear mixed model with self-reported 10-scale anxiety score and GPA as our *two* outcome variables. We will control for time, demographics (including binariazed gender), and TSF (measured by out TS questionnaire).   
+
+Because we think that Taylor-Swift fanness may vary different between males and females, we will interact time with binarized gender. Similarly, we theorize TSF affects anxiety and academic performance differently for religious and non-religious students; hence, we will select students from Liberty University (where most students self-identify as very religious) and UC Berkeley, which was rated least religious campus in America in 2019.  
+
+Assumptions  
+
+We assume a one standard deviation difference in the level of TSF accounts for an noticeable, and relatively large change in both anxiety and academic performance (Cohen d = 0.5). Therefore a 184 sample shall suffice for 80% power and 10% significance. The surplus in sample size (16 participants) should be enough to protect against the loss of power due to attrition, which we expect to be no more than 9%. These power calculations are based on a similar study of Beyonce fans (McLazyperson JASA 2019).
+
+We assume that both outcomes (GPA and anxiety scores) follow a normal distribution. Furthermore, we theorize the effect of TSF on such outcomes is constant over time. Given the repeated-measure nature of the data, we will assume a random individual intercept with mean zero.  
+
+
+## Problem (3) [BONUS]   
+
+Conduct a simulation study to evaluate the impact of non-normality of random effects.  
+
+## (1)  
+
+For this, we construct synthetic correlated data with a random intercept and continuous outcome variable. The random effect, though, is not N(0,D) but will come from an Exponential distribution.    
+
+$$
+Y_{ij} = \beta_0 + \beta_1 X_{1ij} + b_i + e_{ij}
+$$  
+
+where $\beta_0 = 1$, $\beta_1 = 2.4$, $X_1 \in$ {$0,1$}, $b_i \sim Exp(\lambda=1)$, and $e_i \sim N(0,1)$.  
+
+We investigate how a LMM and GEE model fit the data by running simulations of correlated data as described above, and varying the cluster size $n$ as well as number of clusters $m$.  
+
+```{r, echo=FALSE}
+d3_05 <- d3[d3$l == 0.5, c("m","n","l","mod","b1_bias", "coverage_b1", "signif_b1")]
+rownames(d3_05) <- NULL
+d3_05 <- tidyr::pivot_wider(d3_05, id_cols = c("m","n","l"), names_from = "mod", values_from = c("b1_bias","coverage_b1","signif_b1"))
+colnames(d3_05) <- c("m","n","lambda","b1 bias GEE (ex)", "b1 bias LMM", 
+                     "covrge GEE (ex)", "covrge LMM",
+                     "signif GEE (ex)", "signif LMM")
+knitr::kable(d3_05, digits = 2, caption = "LMM and GEE under Exp(0.5) random effect")
+```  
+
+```{r, echo=FALSE}
+d3_05 <- d3[d3$l == 1, c("m","n","l","mod","b1_bias", "coverage_b1", "signif_b1")]
+rownames(d3_05) <- NULL
+d3_05 <- tidyr::pivot_wider(d3_05, id_cols = c("m","n","l"), names_from = "mod", values_from = c("b1_bias","coverage_b1","signif_b1"))
+colnames(d3_05) <- c("m","n","lambda","b1 bias GEE (ex)", "b1 bias LMM", 
+                     "covrge GEE (ex)", "covrge LMM",
+                     "signif GEE (ex)", "signif LMM")
+knitr::kable(d3_05, digits = 2, caption = "LMM and GEE under Exp(0.5) random effect")
+```  
+
+```{r, echo=FALSE}
+d3_05 <- d3[d3$l == 2.5, c("m","n","l","mod","b1_bias", "coverage_b1", "signif_b1")]
+rownames(d3_05) <- NULL
+d3_05 <- tidyr::pivot_wider(d3_05, id_cols = c("m","n","l"), names_from = "mod", values_from = c("b1_bias","coverage_b1","signif_b1"))
+colnames(d3_05) <- c("m","n","lambda","b1 bias GEE (ex)", "b1 bias LMM", 
+                     "covrge GEE (ex)", "covrge LMM",
+                     "signif GEE (ex)", "signif LMM")
+knitr::kable(d3_05, digits = 2, caption = "LMM and GEE under Exp(0.5) random effect")
+```  
+
+As can be seen, for a continuous outcome variable, an Exp($\lambda$) choice for the distribution of the random effect does not make LMM nor GEE unbiased. Coverage is still excellent throughout.   
+Normal distribution is the chosen distribution for random effects for mathematical convenience (i.e. to obtain closed form solutions), but it seems from this simulation that LMM and GEE model the data well (i.e. capture the true effect of $\beta_1$) despite the random effect coming from a non-normal distribution.   
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,148 @@
+---
+title: "Homework 4"
+author: "Raul Torres Aragon"
+date: "2023-02-23"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+load("hw4_objects.RData")
+tab3_wide <- tab3 |> tidyr::pivot_wider(id_cols = c("m","n","r","beta0","beta1"),
+                                        names_from = "mod", 
+                                        values_from = c("b1", "b1 coverage"))
+colnames(tab3_br)[colnames(tab3_br) == "inside_b1"] <- "b1 coverage"
+tab3_br_wide <- tab3_br |> tidyr::pivot_wider(id_cols = c("m","n","r","beta0","beta1"),
+                                              names_from = "mod", 
+                                              values_from = c("b1", "b1 coverage"))
+```
+
+
+
+## Problem 1  
+
+Consider the six city data on the class website. The data file is sixcity.dat and the variable names are given in sixcity.docx. This data set contains 537 children from Steubenville, Ohio, each of whom was examined annually from age 7 to age 10 for the presence of wheezing (which suggests a diagnosis of asthma). Mother’s smoking status was reported. Consider fitting marginal logistic models with covariates age, smoking and interaction between age and smoking.  
+
+### (1)  
+Analyze this data set using a random intercept logistic mixed model by assuming a normally distributed random intercept.  
+
+The model we apply is a GLMM of the form:  
+$$
+\text{logit}\bigg[\frac{P(Y=1)}{P(Y=0)} \bigg] = \exp\{ X_{ij}^T \beta + \boldsymbol{1}_{ij}^Tb_i\}
+$$  
+where $X$ is a design matrix of covariates `1`, `age`, `smokes` and their interaction. $Y$ is the outcome of variable, namely `ws` or a 0/1 indicator for when the participant experiences wheezing. $b_i$ is the random effect for participant (cluster) $i$ and it's assumed to come from a normal distribution with mean 0.  
+The results are:  
+
+```{r, echo=FALSE}
+knitr::kable(mod1_coef, digits=c(1,2,2), caption="GLMM (logit) results")
+```  
+
+
+
+### (2)  
+Compare the results with those obtained under the GEE logistic model and discuss the differences in interpretation of the regression coefficients given by the two models.  
+
+Here we estimate a model using generalized estimating equations with a binomial structure for the mean-variance relationship. The results are:  
+
+```{r, echo=FALSE}
+knitr::kable(mod2_coef, digits=c(1,2,2), caption="GEE (binomial) results")
+```  
+
+The meaning (or interpretation) of the $\hat{\beta}$ is not the same. The GLMM model is estimating the  expectation of the logit(Y) conditional on $b_i$ (hence it is subject specific) whereas GEE is giving us an overall mean logit(Y), for all participants.  
+This has practical differences in interpreting "one unit change in X" on the "logit(Y)". 
+Under GLMM, we have to consider the $b_i$ we're talking about when making inferences. We could, however, take an average across all $b_i's$ and get an overall mean logit(Y). This, in practice, is usually very close to what the GEE gives us.  
+
+For this example, odds of a participant experiencing wheezing given that the mom smokes are about 82% higher ($\exp\{0.5+0.1\}=1.82$) than for someone whose mom does not smoke. GEE says that those odds are ($\exp\{0.3+0.1\}=1.49$) about 50% higher. The estimate under GEE seems to be attenuated. This is expected given that GLMM and GEE are not equivalent under the logit link:  
+
+$$
+\text{GEE} = g^{-1}(X_{ij}^T\beta) \\
+\text{GLMM} = E\bigg[ g^{-1}(X_{ij}^T\beta + \boldsymbol{1}_{ij}^Tb_i)\bigg]
+$$  
+where $g(.)$ is in this case logit. Then, GLMM:  
+$$
+\begin{aligned}
+\text{logit}(\mu_{ij}^b) &= E\bigg[ \frac{\exp\{X_{ij}^T\beta+b_i\}}{1+\exp\{X_{ij}^T\beta+b_i\}} \bigg] \\
+&\approx F\bigg( \frac{X_{ij}^T\beta}{[1+c^2D]^{1/2}}\bigg) \\
+&\neq X_{ij}^T\beta
+\end{aligned}
+$$  
+
+unless $D=[0]$. Hence the $\beta_{GEE}$'s are attenuated roughly by a factor of $[1+c^2D]^{1/2}$ where F is the logistic cdf, $c=16\times \sqrt{3}/15\pi$.  
+
+### (3) (BONUS)    
+Write your own code implementing a random intercept logistic mixed model assuming a normally distributed random intercept. You may use any numerical integration approach including numerical integration functions inside of R.  
+
+## Problem 2  
+(Open Ended Problem) An investigator is interested in conducting a study in which one of two treatments will be administered to an even number of m individuals ($m/2$ in each treatment group). Subsequently, the investigator plans to measure a dichotomous characteristic on each individual $n$ times longitudinally. Note that $n$ does not necessarily equal 5 in this case and these are not necessarily replicates anymore.
+The investigator considers two different strategies for analyzing the data:  
+  (1) by using a logistic mixed model with random intercept and  
+  (2) using a GEE.
+
+What are the relative merits and/or limitations of these approaches?  
+
+The limitation of using GEE is that we're not getting an estimate for the correlation, which may be important at some point. Furthermore, we're getting population means--not individual specific expectations. If the data blends itself to causal inference, with GEE we're limiting ourselves to getting average treatment effects ATE (and not average treatment effects on the treated ATT). These two quantities are the same in the linear world, but not so when Y is binary and we adopt a logit link.  
+
+GLMM, on the other hand, assumes a random and unobserved structure that follows a normal distribution. Correlated binary data may be correlated not only by a cluster common effect but it could also be by other, non Gaussian factors.  
+
+
+Conduct a simulation study to assess these approaches.  
+
+I first create $m$ cluster of size $n$. I randomly assign half the clusters to "treatment", ($X_1=1$), and half to "placebo" $X_1=0$. I then simulate correlated data by first creating correlated probabilities $p$ with structure $p=\exp\{beta_0+\beta_1X_1+b_i\}/(1+\exp\{beta_0+\beta_1X_1+b_i\})$, where $b_i$ is constant within cluster, but i.i.d across clusters with N(0, $\theta$) and $\theta=-(\rho*1^2)/(\rho-1)$. I then draw $Y$ from a binomial distribution with probabilities $p$. 
+
+I iterate over the following values of $m$, $n$, $\rho$ for a fictitious data set with $\beta_0=1$ and $\beta_1=2.5$. Within each iteration, I fit a GLMM and a GEE with exchangeable correaltion as described above. I do this 100 times per $m$,$n$,$\rho$ combination, and I take the mean and standard deviation of $\hat{\beta}_1$ per model to recover the mean and empirical standard error. I report my findings in the following table and figures. The table presents coverage for each model per m,n, $\rho$ combination.   
+
+```{r, echo=FALSE}
+knitr::kable(tab3_wide[tab3_wide$r==0.1, c(-3,-4,-5,-6,-7)], 
+             caption="coverage from simulation with rho=0.1",
+             digits = 2)
+``` 
+
+```{r, echo=FALSE}
+knitr::kable(tab3_br_wide[tab3_br_wide$r==0.8, c(-3,-4,-5,-6,-7)], 
+             caption="coverage from simulation with rho=0.8 and random intercept DGP",
+             digits = 2)
+```
+
+We now present the estimates in the following figures. We present sets of three plots corresponding with the different values of $m$. Each set corresponds to a value of $\rho$. The vertical axis shows estimates for different measurement sizes "n". The true $\beta_`$=2.5 and it is emphasized with a vertical line in each plot. Dashed lines represent 90% confidence intervals.   
+
+```{r, echo=FALSE, out.width="79%", fig.align='center'}
+myplot(tab3, 0.1)
+```
+
+
+```{r, echo=FALSE, out.width="79%", fig.align='center'}
+myplot(tab3_br, 0.8)
+```
+
+As can be gleaned from the tables and figures, GEE is consistently "behind" GLMM. That is consistent with the result derived above where the estimates of GEE are attenuated with respect to the estimates of GLMM. 
+Estimates are pretty similar under little correlation, but notice that when correlation is high (0.8), GLMM's estimates are right on the money. This is expected given than the data generating process from the simulation was designed with a random intercept. GEEs lag behind and theur bias does not improve with larger $m$ or $n$. Their coverage is awful.    
+
+If we change the data generating process for our synthetic correlated data such that measurements within clusters are still correlated but not necessarily due to a random intercept (such as when generating using R function `rbin`), we see that GEE's estimates are on target whereas GLMM's are not, especially as the number of clusters (and measurements) grows large. See:  
+
+```{r, echo=FALSE, out.width="79%", fig.align='center'}
+myplot(tab3, 0.8)
+```  
+
+```{r, echo=FALSE}
+knitr::kable(tab3_wide[tab3_wide$r==0.8, c(-3,-4,-5,-6,-7)], 
+             caption="coverage from simulation with rho=0.8 and 'rbin' DGP",
+             digits = 2)
+```
+
+If you were given more time, what additional simulation scenarios would you consider?  
+
+There are basically three things I'd like to try if I had more time:  
+
+- For starters, I'd like to bring in an OLS fixed effects model into the mix to see how it fares under the different correlated data sets, especially with the correlated data coming from `rbin()`--which does not assume a random effects setup.  
+- Second, I'd like to also change the correlation structure of the GEE model when the data come from a random-intercept data generating process. Similarly, I'd like to see how GLMM with random intercept *and* random slope does when the data generating process is not from a random effects setup.  
+- The third scenario would involve to bringing more covariates and include interactions to see how the coverage and unbiasdness does in the presence of interactions in the data generating process, but not in the actual model. 
+
+
+
+
+
+
+
+

@@ -1,0 +1,388 @@
+---
+title: "Homework 1"
+author: "Raul Torres Aragon"
+date: "2023-01-10"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+options(scipen=999)
+load("hw1_objects.RData")
+```
+
+## Problem 1  
+
+Investigate the impact of correlation (among observations) on the performance of linear 
+regression. Specifically, conduct a series of simulation experiments in which there are $m$ 
+individuals who each have $n$ observations.  
+For simplicity, you may make the outcomes normally distributed with common correlation $\rho$.  
+
+Simulation set up:  
+The idea is to create observation correlated data such that a linear mixed model with a 
+random intercept would capture the true $\boldsymbol{beta}$ vector of parameters. Thus I 
+first seek to create random effect $b$ parameter (intercept) such that 
+$b \sim \mathcal{N}(0, \theta)$ where $\theta = -(\rho \sigma^2)/(\rho - 1)$ and $\sigma=1$.  
+
+I then use `rnorm(0, theta)` R function to generate a $\boldsymbol{b}$ of length $n$, but 
+with $m$ distinct values (one per $m$ cluster).  
+
+I then create the random disturbance vector $e$ as $e \sim \mathcal{N}(0, \sigma^2)$.  
+
+Next, I create a "trt" variable where I randomly assign $X=1$ to some clusters and $X=0$ to 
+the rest. I then set true relationship between X and Y--with a random effect--as 
+$Y_i=\beta_0 + b_i + \beta_1 X_i + e_i$.  
+
+After that, I regress Y on X using R function `lm`, but purspoley not seeking to account 
+for the $b_i$ effect. I store the $\hat{\beta}_0$ amd $\hat{\beta}_1$ coefficients, their 
+pvalue, and confidence interval to determine significance at $\alpha=0.05$ coverage, and in 
+the case of $\beta=0$, type I error probability (rejecting a true null hypothesis).  
+
+I do this 1,000 times per combination of $rho$, $m$, $n$, and where I set $\beta_1=2.3$ and 
+$\beta_0 = 0$ for some iterations and $\beta_0=1.9$ for others. I store the above-mentioned 
+values in a vectors of length 1,000 (one per iteration), and then take the mean 
+of each vector to compute coverage, type I error (when the null is true), and bias of both 
+$\hat{\beta}_0$ and $\hat{\beta}_1$ which I do by computing the mean of each 
+$\hat{\boldsymbol{\beta}}$ and subtracting $\boldsymbol{\beta}$, the true vector of parameters. 
+
+The following tables show the results for the null model, i.e., $\beta_0=0$. ($\beta_1 = 2.3$.) 
+
+```{r, echo=FALSE}
+options(knitr.kable.NA = '')
+knitr::kable(tab[tab$beta0==0, c("rho","m","n","b0_type1","b0_hat_bias","b1_coverage","b1_hat_bias")], 
+             caption = "Least Squares Estimation\nin the presence of observation correlation \n when Beta_0=0")
+```  
+
+
+Notice that when $\beta_0=0$ and $\rho$ is high (0.9), the probability of rejecting the (true) 
+null is high (0.81, 0.52), especially when $n>m$. In other words, the larger the clusters 
+--compared to the number of clusters--the greater the type 1 error probability.  
+Notice, too, that bias is not a huge concern (though things are not rosey either). 
+In other words, it does seem that OLS is asymptotically unbiased for both $\beta_0$ and 
+not so much for $\beta_1$. However, the bias seems to be a bigger threat, again, when $n>m$.  
+Things are as expected when $rho=0$: good coverage, low type 1 error, and unbiasedness for 
+both $\hat{\beta}_0$ and $\hat{\beta}_1$.  
+
+Next, see the table for an alternative model, that is when $\beta_0 \neq 0$. ($\beta_1 = 2.3$.)  
+
+```{r, echo=FALSE}
+options(knitr.kable.NA = '')
+knitr::kable(tab[tab$beta0!=0, c("rho","m","n","b0_coverage","b0_hat_bias","b1_coverage","b1_hat_bias")], 
+             caption = "Least Squares Estimation\nin the presence of observation correlation\nwhen Beta_0=1.9")
+```  
+
+First thing to note is the coverage of both $\hat{\beta}_1$ and $\hat{\beta}_0$. Coverage is 
+95% (under $\alpha=0.05$) when $\rho=0$ but things look horrible when $\rho$ is high. As 
+with the null model above, in the presence of a random intercept, this can be thought of as a 
+misspecification model (or an omitted variable bias problem) and thus both 
+$\beta_0$ and $\beta_1$ have poor coverage.  
+Furthermore, when $n>m$ and $\rho$ is high (0.05 or 0.9), the estimates for both $\beta_0$ 
+and $\beta_1$ are biased. In other words, adding more $n$ per cluster won't solve things when 
+$\rho$ is high.  
+
+I now turn to models with a binary dependent variable. Same set up, but $Y_i \in \{0,1\}$.  
+
+
+## Problem 2  
+
+Repeat the previous exercise except using a dichotomous outcome and using logistic regression.  
+
+The simulation set-up is very similar, except that to generate the correlated $Y_i's$, I 
+use the logistic function, since I'm modeling the logit of $Y_i$, not $Y_i$ per se.  
+
+$$
+Y_i = \frac{\exp\{\beta_0 + b_i + \beta_1X_i\}}{1+\exp\{\beta_0 + b_i + \beta_1X_i\}}
+$$  
+
+where $b_i$ is constant within $m$ but different across $m$, and it's (as in the linear 
+example above) $\mathcal{N}(0,\theta)$ where $\theta = -(\rho \sigma^2)/(\rho - 1)$.  
+
+I then run `glm()` with the logit link and the binomial family. Like in problem 1, I store 
+coefficients, confidence intervals, and pvalues at each iteration to compute type 1 error 
+(under the null model $\beta_0=0$), coverage and bias (under the alternative model 
+$\beta_0 \neq 0$).  
+
+Table 3 shows the results for the null model, that is then $\beta_0=0$ (and $\beta_1=2.3$).  
+
+```{r, echo=FALSE}
+options(knitr.kable.NA = '')
+knitr::kable(tab_logit[tab_logit$beta0==0,c("rho","m","n","b0_type1","b0_hat_bias","b1_coverage","b1_hat_bias")], 
+             caption = "Logistic Regression \nin the presence of observation correlation\n when Beta_0=0")
+```  
+Again, the probability of a type 1 error is around $\alpha$ (i.e. 0.05) when $\rho = 0$. Things 
+get dicey when $\rho$ gets high. It reaches 73% when $\rho = 0.9$. Meanwhile, the bias of 
+$\hat{\beta}_1$ is also high when $\rho$ gets high, more so than in the non-binary case. So, 
+regardless of the number of clusters relative to samples per cluster, things are biased 
+and coverage is trash for $\hat{\beta}_1$.  
+Bottom line, if things were bad in linear regression, things are *really* bad for logistic 
+regression.  
+
+
+
+```{r, echo=FALSE}
+options(knitr.kable.NA = '')
+knitr::kable(tab_logit[tab_logit$beta0==0,c("rho","m","n","b0_coverage","b0_hat_bias","b1_coverage","b1_hat_bias")], 
+             caption = "Logistic Regression \nin the presence of observation correlation\n when Beta_0=1.9")
+```  
+
+Coverage for $\beta_0$ and $\beta_1$ is spot on when $\rho = 0$. Bias is almost nonexistent. 
+But again, things go downhill as $\rho$ goes up. Coverage for both $\beta_0$ and $\beta_1$ 
+is awful as $\rho$ goes up. Bias for $\hat{\beta}_1$ is also bad (thought not so for $\hat{\beta}_0$) 
+as $\rho$ goes up.  
+
+So biasedness because a worse issue in the logistic case. Adding observations within $m$,
+or even $m$ did not make the problem go away.  
+ 
+
+## Problem 3 
+The problem with dealing with multivariate data is that there are multiple outcomes. If 
+there were only one outcome variable per subject, then we can just directly use the methods 
+from 570. One easy way to make the data univariate is to simply take a weighted (either equal 
+or unequal weights) average of the outcome measures. In many fields and application areas, 
+this is what analysts (including some statisticians) do. For now, let’s just assume that we 
+use flat weights. Write a coherent discussion of the pros and cons of this mode of analysis 
+from the perspective of practicality, validity, and power. Consider what situations it would 
+be appropriate to use this type of analysis and under what situations such an analysis might 
+even be nearly optimal. Justify your assertions and explain how you come to your conclusions.  
+
+
+
+The major downside is that a seemingly large dataset (n=1,000) but with only 5 individuals 
+(meaning each individual has 20 measurements) taking the mean within individual will reduce 
+the sample size quite a bit. In other words, we significant reduce power by doing this.  
+
+Furthermore, for this exercise we've been assuming a balanced panel, that is, a situation 
+where each cluster or individual has the same number of measurements. This does not have 
+to be true necessarily. Taking the mean across many observations within a cluster may be fine, 
+but when a cluster only has a handful of observation, the idea is not that appealing anymore.  
+
+
+
+\newpage
+
+## Apendix  
+
+Code  
+```
+set.seed(571)
+rm(list = ls())
+alpha <- 0.05
+N <- 1e3
+
+# ~~~~~~~~~ #
+# Problem 1 #
+# ~~~~~~~~~ #
+
+simul_reg <- function(m, n, rho, beta0, beta1, sigma=1, alpha=alpha) {
+  
+  # create random intercept b_rand ~ N(0,theta)
+  theta = -(rho*sigma^2)/(rho-1)
+  b_r <- rep(rnorm(m, 0, theta),n)
+  
+  # Create e vector
+  e <- rnorm(m*n, 0, sigma)
+  
+  # Create id vector for sanity checks
+  id <- rep(1:m,n)
+  
+  # Create X vector where trt is randomly assigned per id
+  trt <- sample(c(0,1),1)
+  X <- rep(trt, m*n)
+  if(trt==1) { 
+    X[id %% 2 == 0] <- 0 
+  }else { 
+    X[id %% 2 == 0] <- 1 
+  }
+  
+  # Create Y vector with true relationship
+  Y <- beta0 + beta1*X + b_r + e 
+  
+  data.frame(id=id, Y=Y, X=X, b_r=b_r, e=e) |> dplyr::arrange(id)
+  
+  # Fit linear model
+  fit <- lm(Y~X)
+  beta_hat <- coef(fit)
+  beta_hat_SE <- sqrt(diag(vcov(fit)))
+  CI_beta_hat <- matrix(c(beta_hat - abs(qt(alpha/2, m*n-2))*beta_hat_SE, 
+                          beta_hat + abs(qt(alpha/2, m*n-2))*beta_hat_SE), ncol=2, nrow=2)
+  #CI_beta_hat <- confint(fit)
+  inside <- c(as.numeric(CI_beta_hat[1,1] <= beta0 & beta0 <= CI_beta_hat[1,2]),
+              as.numeric(CI_beta_hat[2,1] <= beta1 & beta1 <= CI_beta_hat[2,2]))
+  pval <- summary(fit)$coefficients[,4]
+  
+  #type 1 error: rejecting the null when the null is true
+  type_1 <- c(NA,NA)
+  if(beta0==0) {
+    type_1[1] <- as.numeric(pval[1]<0.05)
+  }
+  if(beta1==0) {
+    type_1[2] <- as.numeric(pval[2]<0.05)
+  }
+  
+  o <- list("b0_inside" = inside[[1]], 
+            "b0_type_1" = type_1[[1]], 
+            "b0_hat"    = beta_hat[[1]],
+            "b1_inside" = inside[[2]], 
+            "b1_type_1" = type_1[[2]], 
+            "b1_hat"    = beta_hat[[2]])
+  return(o)
+}
+
+#~~~~~~~~~~~#
+# Problem 2 #
+#~~~~~~~~~~~#
+simul_logit <- function(m, n, rho, beta0=1, beta1=0, alpha=0.05, sigma=1) {
+  
+  # create correlated X which will determine probabilities p
+  theta = -(rho*sigma^2)/(rho-1)
+  b_r <- rep(rnorm(m, 0, theta),n)
+  X <- rnorm(n*m, 0,1)
+  p <- exp(beta0+b_r+beta1*X)/(1+exp(beta0+b_r+beta1*X))
+  Y <- rbinom(n=m*n, size=1, prob=p)
+  id <- rep(1:m, n)
+  df <- data.frame(id=id, Y=Y, 
+                   X=matrix(X, nrow=m*n, ncol=1), 
+                   p=matrix(p, nrow=m*n, ncol=1)) |> dplyr::arrange(id)
+  df
+
+  # fit logistic model
+  cz <- qnorm(1-alpha/2, 0, 1)
+  fit <- summary(glm(Y~X, data=df, family=binomial(link="logit")))$coefficients
+  beta_hat  <- fit[,1]
+  inside    <- c(as.numeric(fit[1,1]-cz*fit[1,2] < beta0 & beta0 < fit[1,1]+cz*fit[1,2]),
+                 as.numeric(fit[2,1]-cz*fit[2,2] < beta1 & beta1 < fit[2,1]+cz*fit[2,2]))
+  pval <- fit[,4]
+  
+  #type 1 error: rejecting the null when the null is true
+  type_1 <- c(NA,NA)
+  if(beta0==0) {
+    type_1[1] <- as.numeric(pval[1]<0.05)
+  }
+  if(beta1==0) {
+    type_1[2] <- as.numeric(pval[2]<0.05)
+  }
+  
+  # output per iteration
+  o <- list("b0_inside" = inside[[1]], 
+            "b0_type_1" = type_1[[1]], 
+            "b0_hat"    = beta_hat[[1]],
+            "b1_inside" = inside[[2]], 
+            "b1_type_1" = type_1[[2]], 
+            "b1_hat"    = beta_hat[[2]])
+  return(o)
+}
+
+
+
+# ~~~~~~~~~~~~~~~~~~~~~~~ #
+# create table of results #
+# ~~~~~~~~~~~~~~~~~~~~~~~ #
+
+run_sims <- function(N, m, n, rho, beta0, beta1, alpha=0.05, sigma=1, flavor="ols") {
+  coverage_b0 <- rep(0,N)    ;coverage_b1 <- rep(0,N)
+  type_1_b0   <- rep(0,N)    ;type_1_b1   <- rep(0,N)
+  b0_hat      <- rep(0,N)    ;b1_hat      <- rep(0,N)
+  for(i in 1:N) {
+    if(flavor=="logit") {
+      r <- simul_logit(m=m, n=n, rho=rho, beta1=beta1, beta0=beta0, sigma=sigma)
+    } else{
+      r <-   simul_reg(m=m, n=n, rho=rho, beta0=beta0, beta1=beta1, sigma=sigma)
+    }
+    coverage_b0[i] <- r[[1]] 
+    type_1_b0[i]   <- r[[2]] 
+    b0_hat[i]      <- r[[3]]
+    coverage_b1[i] <- r[[4]] 
+    type_1_b1[i]   <- r[[5]] 
+    b1_hat[i]      <- r[[6]]    
+  }
+  o <- list("coverage_b0" = mean(coverage_b0) ,"coverage_b1" = mean(coverage_b1),
+            "type_1_b0"   = mean(type_1_b0)   ,"type_1_b1"   = mean(type_1_b1),
+            "b0_hat"      = beta0-mean(b0_hat),"b1_hat"      = beta1-mean(b1_hat))
+  return(o)
+}
+
+tab <- dplyr::tibble(beta0=numeric(), beta1=numeric(),
+                     rho=numeric(), m=numeric(), n=numeric(), 
+                     b0_coverage=numeric(), 
+                     b0_type1=numeric(), 
+                     b0_hat_bias=numeric(),
+                     b1_coverage=numeric(), 
+                     b1_type1=numeric(), 
+                     b1_hat_bias=numeric())
+
+tab_logit <- dplyr::tibble(beta0=numeric(), beta1=numeric(),
+                     rho=numeric(), m=numeric(), n=numeric(), 
+                     b0_coverage=numeric(), 
+                     b0_type1=numeric(), 
+                     b0_hat_bias=numeric(),
+                     b1_coverage=numeric(), 
+                     b1_type1=numeric(), 
+                     b1_hat_bias=numeric())
+
+for(beta0 in c(0,1.9)) {
+  for(beta1 in c(2.3)) {
+    for(rho in c(0.9, 0.5, 0)) {
+      print(paste0("beta0=",beta0," beta1=",beta1, " rho=", rho))
+      for(m in c(10,50)) {
+        for(n in c(50,10)) {
+          if(m!=n) {  
+            r <- run_sims(N=N, m=m, n=n, rho=rho, beta1=beta1, beta0=beta0, flavor="ols")
+            tab <- dplyr::add_row(tab, 
+                                  "beta0"=beta0, "beta1"=beta1, 
+                                  "rho"=rho, "m"=m, "n"=n, 
+                                  "b0_coverage"=r[[1]], 
+                                  "b0_type1"=r[[3]], 
+                                  "b0_hat_bias"=round(r[[5]],2),
+                                  "b1_coverage"=r[[2]], 
+                                  "b1_type1"=r[[4]], 
+                                  "b1_hat_bias"=round(r[[6]],2))
+            r <- run_sims(N=N, m=m, n=n, rho=rho, beta1=beta1, beta0=beta0, flavor="logit")
+            tab_logit <- dplyr::add_row(tab_logit, 
+                                  "beta0"=beta0, "beta1"=beta1, 
+                                  "rho"=rho, "m"=m, "n"=n, 
+                                  "b0_coverage"=r[[1]], 
+                                  "b0_type1"=r[[3]], 
+                                  "b0_hat_bias"=round(r[[5]],2),
+                                  "b1_coverage"=r[[2]], 
+                                  "b1_type1"=r[[4]], 
+                                  "b1_hat_bias"=round(r[[6]],2))            
+            
+          }
+        }
+      }
+    }
+  }
+}
+tab
+tab_logit
+objs <- ls()
+objs <- ls()[!(ls() %in% c("tab","tab_logit","simul_logit","simul_reg","run_sims"))]
+rm(list = objs)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
